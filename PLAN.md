@@ -135,6 +135,8 @@ the model can see its own work — and `run_applescript(script)` as the escape h
 - `ppt_set_selected_text(text)` — edit where the user is working
 - `ppt_get_notes(slide)` / `ppt_set_notes(slide, text)` — speaker notes
 - `ppt_set_shape_position(slide, shape, left, top, width, height)` — move/resize
+- `ppt_format_shape(slide, shape, fill_color, border_color, border_weight)`
+- `ppt_format_text(slide, shape, bold, italic, underline, size, color)`
 - `ppt_add_animation(slide, shape, effect, trigger, exit)` — e.g. reveal-on-click
 - `ppt_delete_slide(slide)` / `ppt_move_slide(slide, before)`
 - `ppt_screenshot`
@@ -210,10 +212,10 @@ to `run_applescript` for common operations).
 
 ### Tier 2 — promote escape-hatch operations to real tools
 - PowerPoint: shipped `ppt_add_animation` (reveal-on-click etc.),
-  `ppt_set_shape_position`, `ppt_delete_slide`, `ppt_move_slide`, `ppt_get_notes`
-  / `ppt_set_notes`. Still to do: shape fill/line color and font formatting,
-  add textbox / image, duplicate slide (AppleScript `duplicate` returns -50 — needs
-  a copy/paste workaround).
+  `ppt_set_shape_position`, `ppt_format_shape` (fill/border), `ppt_format_text`
+  (font), `ppt_delete_slide`, `ppt_move_slide`, `ppt_get_notes` / `ppt_set_notes`.
+  Still to do: add textbox / image, duplicate slide (AppleScript `duplicate`
+  returns -50 — needs a copy/paste workaround).
 - Word: insert-at-cursor (done), set a paragraph's style (we read the outline but
   can't set "Heading 2"), tables, comments.
 - Excel: cell formatting + number formats, insert / delete rows-cols, sort/filter.
@@ -292,6 +294,10 @@ structure the model can reason over.
   <MsoAnimEffect> trigger <MsoAnimTriggerType>`, then `set exit animation` for an
   exit effect. The trigger isn't readable back (write-only), so verify in a show.
 - `move slide X to before slide Y` works; `duplicate slide X` returns -50.
+- Colors are integer `{r, g, b}` lists (0-255): fill = `fore color of fill format`,
+  border = `fore color of line format` (+ `line weight`), text = `font color of
+  font of text range`. The PowerPoint `font` has boolean `underline` (unlike Word's
+  enum).
 
 ## Assumptions taken from discussion
 

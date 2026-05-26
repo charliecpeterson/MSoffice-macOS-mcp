@@ -27,6 +27,13 @@ _ANIM_TRIGGERS = {
     "after_previous": "after previous",
 }
 
+
+def _rgb(color) -> str:
+    """An [r, g, b] list (0-255) as an AppleScript color literal."""
+    if not (isinstance(color, (list, tuple)) and len(color) == 3):
+        raise ValueError(f"color must be [r, g, b], got {color!r}")
+    return "{" + ", ".join(str(int(v)) for v in color) + "}"
+
 # Friendly layout names -> EPPSlideLayout enum terms accepted by ppt_add_slide.
 _LAYOUTS = {
     "blank": "slide layout blank",
@@ -296,6 +303,64 @@ def register(mcp):
             f"  set exit animation of fx to {'true' if exit else 'false'}\n"
             '  return "ok"\n'
             "end tell"
+        )
+
+    @mcp.tool
+    def ppt_format_shape(
+        slide_index: int,
+        shape_index: int,
+        fill_color: list[int] | None = None,
+        border_color: list[int] | None = None,
+        border_weight: float | None = None,
+    ) -> str:
+        """Format a shape's fill and border (1-based indexes). Colors are [r, g, b]
+        (0-255); border_weight is in points. Only what you pass changes."""
+        lines = []
+        if fill_color is not None:
+            lines.append(f"set fore color of fill format of sh to {_rgb(fill_color)}")
+        if border_color is not None:
+            lines.append(f"set fore color of line format of sh to {_rgb(border_color)}")
+        if border_weight is not None:
+            lines.append(f"set line weight of line format of sh to {float(border_weight)}")
+        if not lines:
+            return "nothing to change"
+        body = "\n    ".join(lines)
+        return bridge.run_applescript(
+            'tell application "Microsoft PowerPoint"\n'
+            f"    set sh to shape {int(shape_index)} of slide {int(slide_index)} of active presentation\n"
+            f"    {body}\nend tell\nreturn \"ok\""
+        )
+
+    @mcp.tool
+    def ppt_format_text(
+        slide_index: int,
+        shape_index: int,
+        bold: bool | None = None,
+        italic: bool | None = None,
+        underline: bool | None = None,
+        size: float | None = None,
+        color: list[int] | None = None,
+    ) -> str:
+        """Format a shape's text font (1-based indexes). color is [r, g, b]; size
+        in points. Only the arguments you pass change."""
+        lines = ["set fnt to font of text range of text frame of sh"]
+        if bold is not None:
+            lines.append(f"set bold of fnt to {'true' if bold else 'false'}")
+        if italic is not None:
+            lines.append(f"set italic of fnt to {'true' if italic else 'false'}")
+        if underline is not None:
+            lines.append(f"set underline of fnt to {'true' if underline else 'false'}")
+        if size is not None:
+            lines.append(f"set font size of fnt to {float(size)}")
+        if color is not None:
+            lines.append(f"set font color of fnt to {_rgb(color)}")
+        if len(lines) == 1:
+            return "nothing to change"
+        body = "\n    ".join(lines)
+        return bridge.run_applescript(
+            'tell application "Microsoft PowerPoint"\n'
+            f"    set sh to shape {int(shape_index)} of slide {int(slide_index)} of active presentation\n"
+            f"    {body}\nend tell\nreturn \"ok\""
         )
 
     @mcp.tool
