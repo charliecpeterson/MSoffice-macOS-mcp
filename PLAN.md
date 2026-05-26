@@ -171,7 +171,7 @@ End-to-end verification is manual against open apps, app by app.
 3. ~~Word writes (insert, replace, find/replace, formatting).~~ Done — all 9 Word
    tools verified live.
 4. ~~Excel module.~~ Done — all 8 Excel tools verified live.
-5. PowerPoint module.
+5. ~~PowerPoint module.~~ Done — all 7 PowerPoint tools verified live.
 6. README + config examples + polish.
 
 ### Word dictionary notes (learned from live runs)
@@ -199,6 +199,17 @@ End-to-end verification is manual against open apps, app by app.
   hyperlink address, unrelated). Values round-trip as JSON 2-D lists.
 - Read tools return `Any`, so the value lands in the MCP text content, not the
   structured `.data` channel — fine for LLM clients.
+
+### PowerPoint dictionary notes (learned from live runs)
+
+- Slide text: shape -> `text frame` -> `text range` -> `content`, guarded by
+  `has text frame` and `has text`.
+- Add a slide with `make new slide at end of active presentation` (or `at after
+  (slide N of active presentation)`). The `at end of slides of …` form and the
+  JXA `make` both fail (-2710 / -1708).
+- Current slide on screen: `slide of view of active window`, then `slide index`.
+- Layouts are the `EPPSlideLayout` enum (`slide layout title only`, etc.);
+  ppt_add_slide maps friendly names onto them.
 
 ## Assumptions taken from discussion
 

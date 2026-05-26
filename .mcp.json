@@ -7,6 +7,10 @@
     "excel": {
       "command": "uv",
       "args": ["run", "--directory", "/Users/charlie/mcps/OfficeMCP", "office-mcp", "excel"]
+    },
+    "powerpoint": {
+      "command": "uv",
+      "args": ["run", "--directory", "/Users/charlie/mcps/OfficeMCP", "office-mcp", "powerpoint"]
     }
   }
 }

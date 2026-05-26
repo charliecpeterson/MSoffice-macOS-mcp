@@ -15,10 +15,10 @@ Each launch exposes one app's tools, keeping the toolset small and focused:
 ```
 office-mcp word
 office-mcp excel
-office-mcp powerpoint   # not yet implemented
+office-mcp powerpoint
 ```
 
-Word and Excel are implemented; PowerPoint follows.
+Word, Excel, and PowerPoint are all implemented.
 
 ## Configure (Claude Code)
 
@@ -32,7 +32,8 @@ opencode reads the same shape.
 
 ## Permissions
 
-The first time a tool drives Word, macOS shows a one-time Automation prompt. It
+The first time a tool drives a given Office app, macOS shows a one-time
+Automation prompt (each app — Word, Excel, PowerPoint — prompts separately). It
 attaches to the **parent terminal app** (Terminal / iTerm / VS Code), not Python
 — grant "<your terminal> -> control Microsoft Word" under System Settings ->
 Privacy & Security -> Automation. If denied, tools return a clear "not
