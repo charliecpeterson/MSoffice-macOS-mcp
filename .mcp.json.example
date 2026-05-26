@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "word": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/office-mcp", "office-mcp", "word"]
+    },
+    "excel": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/office-mcp", "office-mcp", "excel"]
+    },
+    "powerpoint": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/office-mcp", "office-mcp", "powerpoint"]
+    }
+  }
+}

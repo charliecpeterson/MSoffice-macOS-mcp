@@ -45,8 +45,9 @@ connect; there's also a Claude Code skill at `.claude/skills/office-mcp/`.
 
 ## Configure (Claude Code)
 
-Per-project `.mcp.json`, wiring up only the app you need. Run it from this checkout
-with `uv` (until it's published to PyPI):
+Copy `.mcp.json.example` to `.mcp.json` and set the `--directory` path to your
+checkout. It wires up all three apps (drop the ones you don't need — each server
+carries only its own tools):
 
 ```json
 {
@@ -59,9 +60,9 @@ with `uv` (until it's published to PyPI):
 }
 ```
 
-Switch `word` → `excel` / `powerpoint` for the other apps, or list several servers
-(each still carries only its own tools). opencode reads the same shape. Once
-published, the command simplifies to `uvx office-mcp <app>`.
+`.mcp.json` is gitignored since the path is machine-specific. opencode reads the
+same shape. Once published to PyPI, the command simplifies to
+`uvx office-mcp <app>` and no path is needed.
 
 ## Permissions
 
