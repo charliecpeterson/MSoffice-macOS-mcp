@@ -95,6 +95,37 @@ on run argv
 end run
 """
 
+# PowerPoint for Mac reports the selection type and the selected text reliably,
+# but won't hand over the selected shape objects (`shape range of selection` reads
+# as empty via both JXA and AppleScript, even when type is "shapes"). So this
+# reports type/slide/selectedText; to see which shape is selected, take a
+# screenshot — the selection handles show.
+_SELECTION = """
+const pp = Application('Microsoft PowerPoint');
+let out = { type: 'none' };
+if (pp.running()) {
+  const sel = pp.activeWindow.selection;
+  out.type = sel.selectionType().replace('selection type ', '');
+  try { out.slide = pp.activeWindow.view.slide.slideIndex(); } catch (e) {}
+  if (out.type === 'text') { try { out.selectedText = sel.textRange.content(); } catch (e) {} }
+}
+JSON.stringify(out);
+"""
+
+_SET_SELECTED_TEXT = """
+on run argv
+  tell application "Microsoft PowerPoint"
+    set sel to selection of active window
+    if (selection type of sel) is selection type shapes then
+      set content of text range of text frame of (item 1 of shape range of sel) to (item 1 of argv)
+    else
+      set content of (text range of sel) to (item 1 of argv)
+    end if
+  end tell
+  return "ok"
+end run
+"""
+
 
 def register(mcp):
     @mcp.tool
@@ -143,6 +174,20 @@ def register(mcp):
         """Set the text of a shape (1-based) on a slide (1-based). Use ppt_read_slide
         to find shape indexes."""
         return bridge.run_applescript(_SET_TEXT % (int(shape_index), int(slide_index)), text)
+
+    @mcp.tool
+    def ppt_get_selection() -> dict:
+        """What the user has selected: {type, slide, selectedText}. type is
+        none / slides / shapes / text. PowerPoint won't reveal which shape is
+        selected — use ppt_screenshot to see it (the handles show)."""
+        return bridge.run_jxa(_SELECTION)
+
+    @mcp.tool
+    def ppt_set_selected_text(text: str) -> str:
+        """Set the text where the user is working: replaces the selected text /
+        inserts at the cursor (text mode), or the whole selected shape's text
+        (shape mode)."""
+        return bridge.run_applescript(_SET_SELECTED_TEXT, text)
 
     @mcp.tool
     def ppt_screenshot() -> Image:

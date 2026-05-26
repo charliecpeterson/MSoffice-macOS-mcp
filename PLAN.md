@@ -106,6 +106,7 @@ the model can see its own work — and `run_applescript(script)` as the escape h
 - `word_get_document_text` — full text (with optional length cap)
 - `word_get_selection` — currently selected text
 - `word_insert_text(text)` — append at end of document
+- `word_insert_at_cursor(text)` — insert at the cursor, before any selection
 - `word_replace_selection(text)`
 - `word_find_replace(find, replace, match_case)`
 - `word_apply_formatting(...)` — bold/italic/underline/size/color on the selection
@@ -120,6 +121,7 @@ the model can see its own work — and `run_applescript(script)` as the escape h
 - `excel_set_cell(cell, value, sheet)`
 - `excel_set_formula(cell, formula, sheet)`
 - `excel_get_selection`
+- `excel_set_selection(value)` — set every cell in the selection
 - `excel_screenshot`
 
 ### PowerPoint
@@ -129,6 +131,8 @@ the model can see its own work — and `run_applescript(script)` as the escape h
 - `ppt_add_slide(layout, position)`
 - `ppt_set_text(slide, shape, text)`
 - `ppt_get_current_slide`
+- `ppt_get_selection` — type / slide / selected text
+- `ppt_set_selected_text(text)` — edit where the user is working
 - `ppt_screenshot`
 
 ## Client configuration
@@ -194,11 +198,11 @@ to `run_applescript` for common operations).
 ### Tier 1
 - **Screenshot / vision.** Shipped. Closes the do → see → verify loop and makes
   every other edit checkable. (See "Vision findings".)
-- **Selection-aware editing.** Act where the user is pointing. Today Word only
-  appends at the end and PowerPoint addresses shapes by index — neither works off
-  the live cursor / selected shape. Add: read the current selection (and selected
-  shape in PowerPoint) and edit it in place. The most "coworker" interaction and
-  currently the weakest.
+- **Selection-aware editing.** Shipped: `word_insert_at_cursor`,
+  `excel_set_selection`, `ppt_get_selection` + `ppt_set_selected_text`. Act where
+  the user is pointing. Caveat: PowerPoint reports selection *type* and selected
+  *text* but won't reveal the selected *shape* (`shape range of selection` reads
+  empty via both JXA and AppleScript) — a screenshot shows the handles instead.
 
 ### Tier 2 — promote escape-hatch operations to real tools
 - PowerPoint: `ppt_add_click_reveal(slide, shape)` (the reveal-on-click build we
@@ -269,6 +273,11 @@ structure the model can reason over.
 - Current slide on screen: `slide of view of active window`, then `slide index`.
 - Layouts are the `EPPSlideLayout` enum (`slide layout title only`, etc.);
   ppt_add_slide maps friendly names onto them.
+- Selection: `selection type` (none/slides/shapes/text) and `text range of
+  selection` read fine, but `shape range of selection` reads empty even when the
+  type is "shapes" — so we can't enumerate selected shapes. Clicking a text
+  placeholder enters "text" mode (cursor), not "shapes" mode. Editing via the
+  selection's text range works (replace highlighted / insert at cursor).
 
 ## Assumptions taken from discussion
 

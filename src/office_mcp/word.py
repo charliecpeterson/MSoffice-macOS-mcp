@@ -63,6 +63,15 @@ on run argv
 end run
 """
 
+_INSERT_AT_CURSOR = """
+on run argv
+  tell application "Microsoft Word"
+    type text selection text (item 1 of argv)
+  end tell
+  return "ok"
+end run
+"""
+
 # %s is the match-case boolean literal; find/replace text come in via argv.
 _FIND_REPLACE = """
 on run argv
@@ -129,6 +138,11 @@ def register(mcp):
     def word_insert_text(text: str) -> str:
         """Insert text at the end of the active document."""
         return bridge.run_applescript(_INSERT_AT_END, text)
+
+    @mcp.tool
+    def word_insert_at_cursor(text: str) -> str:
+        """Insert text at the current cursor position, before any selection."""
+        return bridge.run_applescript(_INSERT_AT_CURSOR, text)
 
     @mcp.tool
     def word_find_replace(find: str, replace: str, match_case: bool = False) -> str:

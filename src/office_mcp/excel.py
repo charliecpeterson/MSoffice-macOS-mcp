@@ -81,6 +81,16 @@ def register(mcp):
         return bridge.run_jxa(_GET_SELECTION)
 
     @mcp.tool
+    def excel_set_selection(value: float | str) -> bool:
+        """Set every cell in the current selection to a number or text."""
+        script = (
+            "const xl = Application('Microsoft Excel');\n"
+            f"xl.selection.value = {json.dumps(value)};\n"
+            "JSON.stringify(true);"
+        )
+        return bridge.run_jxa(script)
+
+    @mcp.tool
     def excel_write_range(
         cell_range: str, values: list[list[float | str]], sheet: str | None = None
     ) -> bool:
