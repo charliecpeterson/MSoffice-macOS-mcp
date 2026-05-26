@@ -130,6 +130,11 @@ the model can see its own work — and `run_applescript(script)` as the escape h
 - `excel_insert_rows(at_row, count, sheet)` / `excel_delete_rows(...)`
 - `excel_insert_columns(at_col, count, sheet)` / `excel_delete_columns(...)`
 - `excel_autofit(range, sheet)` — auto-fit column widths
+- `excel_add_sheet` / `excel_delete_sheet` / `excel_rename_sheet` / `excel_activate_sheet`
+- `excel_sort(range, key_column, ascending, has_header, sheet)`
+- `excel_set_borders(range, weight, color, sheet)` — edges + inner grid
+- `excel_autofilter(range, sheet)`
+- `excel_create_chart(range, chart_type, sheet)` — column/bar/line/scatter/pie/area
 - `excel_screenshot`
 
 ### PowerPoint
@@ -228,9 +233,10 @@ to `run_applescript` for common operations).
   `word_set_table_cell` / `word_get_table_cell`, `word_insert_picture`. Comments
   aren't scriptable in Word's dictionary (only `delete all comments` exists). Still
   to do: table/cell formatting, floating shapes (drawing-layer add/move).
-- Excel: shipped `excel_format_range` (font/fill/number format), `excel_insert_rows`
-  / `excel_delete_rows`, `excel_insert_columns` / `excel_delete_columns`,
-  `excel_autofit`. Still to do: sort / filter, borders.
+- Excel: shipped formatting, rows/cols, autofit, sheet management (add/delete/
+  rename/activate), sort, borders, autofilter, and charts. Cross-sheet references
+  work via the `sheet` param and `Sheet!A1` formulas. Still to do: array formulas,
+  pivot tables, conditional formatting.
 
 ### Tier 3 — polish
 - Safety: a backup/checkpoint tool. The sandbox blocks `/tmp`, but a copy can be
@@ -299,6 +305,14 @@ structure the model can reason over.
 - Rows/cols use AppleScript `insert into range` / `delete range` on a row range
   ("5:7") or column range ("C:E"); `autofit (entire column of range …)`. The sheet
   name is passed via argv to avoid escaping.
+- Sheets: `make new worksheet at end of active workbook`, `activate object
+  worksheet …`, `set name of worksheet …`, `delete worksheet …`.
+- Sort: `sort <range> key1 <cell-in-column> order1 sort ascending|descending
+  header header yes|no`. Borders: `get border <range> which border <XlBordersIndex>`,
+  then `line style` (continuous), `weight` (`border weight thin`…), `color`.
+- Charts: select the range first, then `make new chart object`, then `set chart
+  type of chart of …` (XlChartType). There's no clean SetSourceData, so the
+  selection is what seeds the chart. Filter: `autofilter range <range>`.
 
 ### PowerPoint dictionary notes (learned from live runs)
 

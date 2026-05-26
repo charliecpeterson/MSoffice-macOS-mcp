@@ -8,11 +8,27 @@ Excel: `.running()` is checked first.
 """
 
 import json
+import re
 from typing import Any
 
 from fastmcp.utilities.types import Image
 
 from office_mcp import bridge
+
+_CHART_TYPES = {
+    "column": "column clustered",
+    "bar": "bar clustered",
+    "line": "line markers",
+    "scatter": "xy scatter lines",
+    "pie": "pie",
+    "area": "area",
+}
+_BORDER_WEIGHTS = {
+    "hairline": "border weight hairline",
+    "thin": "border weight thin",
+    "medium": "border weight medium",
+    "thick": "border weight thick",
+}
 
 _STATUS = """
 const xl = Application('Microsoft Excel');
@@ -85,6 +101,17 @@ def _range_command(clause: str, rng: str, sheet):
     return bridge.run_applescript(
         f'on run argv\ntell application "Microsoft Excel" to {clause.format(ref=ref)}\nend run', sheet
     )
+
+
+def _run_on_sheet(clause: str, sheet):
+    """Run a multi-line Excel clause inside a tell block. `clause` uses the literal
+    placeholder __SREF__ for the sheet reference (plain replace, so AppleScript
+    list braces in the clause are left alone); the sheet name is passed via argv."""
+    if sheet is None:
+        body = clause.replace("__SREF__", "active sheet")
+        return bridge.run_applescript(f'tell application "Microsoft Excel"\n{body}\nend tell')
+    body = clause.replace("__SREF__", "worksheet (item 1 of argv) of active workbook")
+    return bridge.run_applescript(f'on run argv\ntell application "Microsoft Excel"\n{body}\nend tell\nend run', sheet)
 
 
 def register(mcp):
@@ -221,6 +248,118 @@ def register(mcp):
         """Auto-fit the column widths spanning an A1-style range (e.g. "A:D")."""
         _range_command("autofit (entire column of {ref})", cell_range, sheet)
         return f"autofit {cell_range}"
+
+    @mcp.tool
+    def excel_add_sheet(name: str | None = None) -> str:
+        """Add a worksheet at the end of the workbook, optionally named."""
+        if name is None:
+            bridge.run_applescript('tell application "Microsoft Excel" to make new worksheet at end of active workbook')
+            return "added sheet"
+        bridge.run_applescript(
+            'on run argv\ntell application "Microsoft Excel" to set name of '
+            "(make new worksheet at end of active workbook) to (item 1 of argv)\nend run",
+            name,
+        )
+        return f"added sheet '{name}'"
+
+    @mcp.tool
+    def excel_delete_sheet(name: str) -> str:
+        """Delete a worksheet by name."""
+        bridge.run_applescript(
+            'on run argv\ntell application "Microsoft Excel" to delete worksheet (item 1 of argv) '
+            "of active workbook\nend run",
+            name,
+        )
+        return f"deleted sheet '{name}'"
+
+    @mcp.tool
+    def excel_rename_sheet(old_name: str, new_name: str) -> str:
+        """Rename a worksheet."""
+        bridge.run_applescript(
+            'on run argv\ntell application "Microsoft Excel" to set name of worksheet (item 1 of argv) '
+            "of active workbook to (item 2 of argv)\nend run",
+            old_name,
+            new_name,
+        )
+        return f"renamed '{old_name}' to '{new_name}'"
+
+    @mcp.tool
+    def excel_activate_sheet(name: str) -> str:
+        """Switch to (activate) a worksheet by name."""
+        bridge.run_applescript(
+            'on run argv\ntell application "Microsoft Excel" to activate object worksheet (item 1 of argv) '
+            "of active workbook\nend run",
+            name,
+        )
+        return f"activated '{name}'"
+
+    @mcp.tool
+    def excel_sort(
+        cell_range: str,
+        key_column: str,
+        ascending: bool = True,
+        has_header: bool = True,
+        sheet: str | None = None,
+    ) -> str:
+        """Sort an A1 range by a column (a letter, e.g. "C"). has_header keeps the
+        first row in place."""
+        m = re.match(r"[A-Za-z]+(\d+)", cell_range)
+        key = f"{key_column.upper()}{m.group(1) if m else '1'}"
+        order = "sort ascending" if ascending else "sort descending"
+        header = "header yes" if has_header else "header no"
+        clause = (
+            f'sort (range "{cell_range}" of __SREF__) key1 (range "{key}" of __SREF__) '
+            f"order1 {order} header {header}"
+        )
+        _run_on_sheet(clause, sheet)
+        return f"sorted {cell_range} by {key_column.upper()}"
+
+    @mcp.tool
+    def excel_set_borders(
+        cell_range: str, weight: str = "thin", color: list[int] | None = None, sheet: str | None = None
+    ) -> str:
+        """Put borders (all edges + inner grid) on a range. weight: hairline / thin /
+        medium / thick. color is [r, g, b] (default black)."""
+        if weight not in _BORDER_WEIGHTS:
+            raise ValueError(f"unknown weight {weight!r}; choose from {sorted(_BORDER_WEIGHTS)}")
+        rgb = _rgb_list(color) if color is not None else [0, 0, 0]
+        color_lit = "{" + ", ".join(str(v) for v in rgb) + "}"
+        clause = (
+            f'set rng to range "{cell_range}" of __SREF__\n'
+            "repeat with idx in {edge top, edge bottom, edge left, edge right, inside horizontal, inside vertical}\n"
+            "set b to get border rng which border idx\n"
+            "set line style of b to continuous\n"
+            f"set weight of b to {_BORDER_WEIGHTS[weight]}\n"
+            f"set color of b to {color_lit}\n"
+            "end repeat"
+        )
+        _run_on_sheet(clause, sheet)
+        return f"bordered {cell_range}"
+
+    @mcp.tool
+    def excel_autofilter(cell_range: str, sheet: str | None = None) -> str:
+        """Toggle AutoFilter (the dropdown filters) on a range with headers."""
+        _range_command("autofilter range ({ref})", cell_range, sheet)
+        return f"autofilter on {cell_range}"
+
+    @mcp.tool
+    def excel_create_chart(cell_range: str, chart_type: str = "column", sheet: str | None = None) -> str:
+        """Create a chart from an A1 range. chart_type: column, bar, line, scatter,
+        pie, area."""
+        if chart_type not in _CHART_TYPES:
+            raise ValueError(f"unknown chart_type {chart_type!r}; choose from {sorted(_CHART_TYPES)}")
+        lines = []
+        if sheet is not None:
+            lines.append("activate object worksheet (item 1 of argv) of active workbook")
+        lines.append(f'select range "{cell_range}" of active sheet')
+        lines.append("set co to make new chart object at end of active sheet")
+        lines.append(f"set chart type of chart of co to {_CHART_TYPES[chart_type]}")
+        body = "\n".join(lines)
+        if sheet is None:
+            bridge.run_applescript(f'tell application "Microsoft Excel"\n{body}\nend tell')
+        else:
+            bridge.run_applescript(f'on run argv\ntell application "Microsoft Excel"\n{body}\nend tell\nend run', sheet)
+        return f"created {chart_type} chart from {cell_range}"
 
     @mcp.tool
     def excel_screenshot() -> Image:
