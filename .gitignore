@@ -6,3 +6,6 @@ dist/
 
 # Local MCP config (machine-specific paths); copy from .mcp.json.example
 .mcp.json
+
+# Editor config (was stale Windows cruft from the upstream clone)
+.vscode/
