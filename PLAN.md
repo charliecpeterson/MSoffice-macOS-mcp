@@ -115,6 +115,7 @@ the model can see its own work — and `run_applescript(script)` as the escape h
 - `word_insert_table(rows, columns)` — insert a table at the cursor
 - `word_set_table_cell(row, column, text, table)` / `word_get_table_cell(...)`
 - `word_insert_picture(path)` — inline picture at the cursor
+- `word_add_textbox(text, left, top, width, height)` — floating text box
 - `word_screenshot`
 
 ### Excel
@@ -124,6 +125,7 @@ the model can see its own work — and `run_applescript(script)` as the escape h
 - `excel_write_range(range, values, sheet)`
 - `excel_set_cell(cell, value, sheet)`
 - `excel_set_formula(cell, formula, sheet)`
+- `excel_set_array_formula(range, formula, sheet)` — CSE/array formula
 - `excel_get_selection`
 - `excel_set_selection(value)` — set every cell in the selection
 - `excel_format_range(range, sheet, bold, italic, size, font_color, fill_color, number_format)`
@@ -229,16 +231,18 @@ to `run_applescript` for common operations).
 - PowerPoint: shipped `ppt_add_animation` (reveal-on-click etc.),
   `ppt_set_shape_position`, `ppt_format_shape` (fill/border), `ppt_format_text`
   (font), `ppt_add_textbox`, `ppt_add_image`, `ppt_delete_slide`, `ppt_move_slide`,
-  `ppt_get_notes` / `ppt_set_notes`. Still to do: duplicate slide (AppleScript
-  `duplicate` returns -50 — needs a copy/paste workaround), charts/tables on slides.
+  `ppt_get_notes` / `ppt_set_notes`. **Not scriptable** in PowerPoint's dictionary
+  (confirmed): slide duplicate (no `duplicate`/`paste`, only `copy object`), charts
+  (no chart class), and tables on slides (`make new table` → -2710). These need GUI
+  scripting or manual steps.
 - Word: shipped insert-at-cursor, `word_set_style`, `word_insert_table`,
-  `word_set_table_cell` / `word_get_table_cell`, `word_insert_picture`. Comments
-  aren't scriptable in Word's dictionary (only `delete all comments` exists). Still
-  to do: table/cell formatting, floating shapes (drawing-layer add/move).
+  `word_set_table_cell` / `word_get_table_cell`, `word_insert_picture`,
+  `word_add_textbox` (floating). Comments aren't scriptable in Word's dictionary
+  (only `delete all comments` exists). Still to do: table/cell formatting.
 - Excel: shipped formatting, rows/cols, autofit, sheet management (add/delete/
-  rename/activate), sort, borders, autofilter, and charts. Cross-sheet references
-  work via the `sheet` param and `Sheet!A1` formulas. Still to do: array formulas,
-  pivot tables, conditional formatting.
+  rename/activate), sort, borders, autofilter, charts, and array formulas
+  (`excel_set_array_formula`). Cross-sheet refs work via the `sheet` param and
+  `Sheet!A1` formulas. Still to do: pivot tables, conditional formatting.
 
 ### Tier 3 — polish
 - Safety: a backup/checkpoint tool. The sandbox blocks `/tmp`, but a copy can be
@@ -289,6 +293,9 @@ structure the model can reason over.
   strip them).
 - Insert a picture: `make new inline picture at <text range> with properties
   {file name:"/path"}`.
+- Floating text box: `make new text box at active document with properties
+  {left position, top, width, height}`, then set `content of text range of text
+  frame`. Bulk `delete every shape` fails (-1708) — delete shapes by index.
 
 ### Excel dictionary notes (learned from live runs)
 
@@ -315,6 +322,7 @@ structure the model can reason over.
 - Charts: select the range first, then `make new chart object`, then `set chart
   type of chart of …` (XlChartType). There's no clean SetSourceData, so the
   selection is what seeds the chart. Filter: `autofilter range <range>`.
+- Array formula: range `formula array` is settable (JXA `range.formulaArray = …`).
 
 ### PowerPoint dictionary notes (learned from live runs)
 
@@ -343,6 +351,9 @@ structure the model can reason over.
   width, height}` (then set its text), `make new picture at <slide> with properties
   {file name, left position, top, …}`. The new shape is the last one (its index =
   count of shapes).
+- Dead ends (dictionary doesn't support): slide `duplicate`/`paste` (only
+  `copy object`), `chart` class, and `make new table` (-2710). These need GUI
+  scripting (System Events) or manual steps — not done.
 - Colors are integer `{r, g, b}` lists (0-255): fill = `fore color of fill format`,
   border = `fore color of line format` (+ `line weight`), text = `font color of
   font of text range`. The PowerPoint `font` has boolean `underline` (unlike Word's

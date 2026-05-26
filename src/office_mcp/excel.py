@@ -185,6 +185,17 @@ def register(mcp):
         return bridge.run_jxa(script)
 
     @mcp.tool
+    def excel_set_array_formula(cell_range: str, formula: str, sheet: str | None = None) -> bool:
+        """Set an array (CSE) formula on a cell or range, e.g. "=SUM(A1:A3*B1:B3)".
+        For a multi-cell result, pass the full output range."""
+        script = (
+            "const xl = Application('Microsoft Excel');\n"
+            f"{_target(sheet)}.ranges[{json.dumps(cell_range)}].formulaArray = {json.dumps(formula)};\n"
+            "JSON.stringify(true);"
+        )
+        return bridge.run_jxa(script)
+
+    @mcp.tool
     def excel_format_range(
         cell_range: str,
         sheet: str | None = None,

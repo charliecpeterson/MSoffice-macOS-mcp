@@ -102,6 +102,17 @@ on run argv
 end run
 """
 
+# %s are left/top/width/height (points); the box text comes via argv.
+_ADD_TEXTBOX = """
+on run argv
+  tell application "Microsoft Word"
+    set tb to make new text box at active document with properties {left position:%s, top:%s, width:%s, height:%s}
+    set content of text range of text frame of tb to (item 1 of argv)
+  end tell
+  return "ok"
+end run
+"""
+
 # %s is the match-case boolean literal; find/replace text come in via argv.
 _FIND_REPLACE = """
 on run argv
@@ -252,6 +263,19 @@ def register(mcp):
     def word_insert_picture(path: str) -> str:
         """Insert an image file as an inline picture at the cursor."""
         return bridge.run_applescript(_INSERT_PICTURE, path)
+
+    @mcp.tool
+    def word_add_textbox(
+        text: str = "",
+        left: float = 100.0,
+        top: float = 100.0,
+        width: float = 200.0,
+        height: float = 80.0,
+    ) -> str:
+        """Add a floating text box to the document, positioned/sized in points."""
+        return bridge.run_applescript(
+            _ADD_TEXTBOX % (float(left), float(top), float(width), float(height)), text
+        )
 
     @mcp.tool
     def word_screenshot() -> Image:
