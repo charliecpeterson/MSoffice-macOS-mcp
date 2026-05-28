@@ -29,9 +29,11 @@ Building from scratch: word_add_section (styled heading + body), and word_insert
 word_fill_table for tables (one call, not many word_set_table_cell). word_set_style sets a
 paragraph's heading level by index.
 
-Gotchas: set font size/color with word_apply_formatting (it acts on the selection) — raw Apple-event
-font sizing fails. word_find_replace understands Word codes (^p, ^l, ^t) but caps the replacement at
-255 chars (it errors past that — use word_replace_paragraph / word_insert_paragraph for big text).
+For inline character formatting on a sub-range (e.g. bold a single term inside a paragraph), use
+word_format_range(paragraph=N, start, end, bold/italic/underline/strikethrough/font/size/color).
+word_apply_formatting still works on the live selection. word_find_replace understands Word codes
+(^p, ^l, ^t) but caps the replacement at 255 chars (it errors past that — use word_replace_paragraph
+or word_insert_paragraph for big text).
 Not scriptable in Word: comments. If no tool fits, use run_applescript.
 
 First use prompts a macOS Automation grant (and Screen Recording for word_screenshot) on the
@@ -361,6 +363,81 @@ def register(mcp):
             lines.append(f"set color index of fnt to {color}")
         body = "\n    ".join(lines)
         return bridge.run_applescript(f'tell application "Microsoft Word"\n    {body}\nend tell\nreturn "ok"')
+
+    @mcp.tool
+    def word_format_range(
+        paragraph: int,
+        start: int,
+        end: int,
+        bold: bool | None = None,
+        italic: bool | None = None,
+        underline: bool | None = None,
+        strikethrough: bool | None = None,
+        font: str | None = None,
+        size: float | None = None,
+        color: list | None = None,
+    ) -> str:
+        """Apply inline character formatting to a sub-range within paragraph N.
+
+        start/end are 0-based character offsets within the paragraph (end is
+        exclusive). Only attributes passed in are changed; the rest are left
+        as they were. color is [r, g, b] 0-255. Use this to bold a phrase,
+        change one word's font, etc. without disturbing the live selection.
+        """
+        if start < 0 or end <= start:
+            raise ValueError(
+                f"start={start}, end={end} invalid (need 0 <= start < end)"
+            )
+        lines = [
+            f"set paraTR to text object of paragraph {int(paragraph)} of active document",
+            "set pStart to start of paraTR",
+            f"set targetRange to create range active document start (pStart + {int(start)}) end (pStart + {int(end)})",
+            "set fnt to font object of targetRange",
+        ]
+        any_change = False
+        if bold is not None:
+            lines.append(f"set bold of fnt to {'true' if bold else 'false'}")
+            any_change = True
+        if italic is not None:
+            lines.append(f"set italic of fnt to {'true' if italic else 'false'}")
+            any_change = True
+        if underline is not None:
+            lines.append(
+                f"set underline of fnt to {'underline single' if underline else 'underline none'}"
+            )
+            any_change = True
+        if strikethrough is not None:
+            lines.append(
+                f"set strike through of fnt to {'true' if strikethrough else 'false'}"
+            )
+            any_change = True
+        if size is not None:
+            lines.append(f"set font size of fnt to {float(size)}")
+            any_change = True
+        if color is not None:
+            if len(color) != 3 or not all(0 <= int(c) <= 255 for c in color):
+                raise ValueError("color must be [r, g, b] with 0-255 values")
+            r, g, b = (int(c) for c in color)
+            lines.append(f"set color of fnt to {r + g * 256 + b * 65536}")
+            any_change = True
+        if font is not None:
+            lines.append("set name of fnt to (item 1 of argv)")
+            any_change = True
+        if not any_change:
+            raise ValueError(
+                "no formatting changes requested; pass at least one of "
+                "bold/italic/underline/strikethrough/font/size/color"
+            )
+        body = "\n    ".join(lines)
+        script = (
+            "on run argv\n"
+            '  tell application "Microsoft Word"\n'
+            f"    {body}\n"
+            "  end tell\n"
+            '  return "ok"\n'
+            "end run"
+        )
+        return bridge.run_applescript(script, font or "")
 
     @mcp.tool
     def word_get_outline() -> list:

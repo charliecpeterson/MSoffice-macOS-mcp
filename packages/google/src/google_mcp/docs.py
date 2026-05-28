@@ -5,8 +5,6 @@ by index. Edits via the Docs v1 API show up live in the open browser tab through
 Google's realtime sync.
 """
 
-from typing import Any
-
 from google_mcp import auth
 
 INSTRUCTIONS = """\

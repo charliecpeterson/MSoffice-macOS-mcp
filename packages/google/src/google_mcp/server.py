@@ -14,7 +14,7 @@ APPS: dict = {"docs": docs, "sheets": sheets, "slides": slides}
 def build(app: str) -> FastMCP:
     module = APPS.get(app)
     if module is None:
-        available = ", ".join(sorted(APPS)) or "(none yet — sheets is next)"
+        available = ", ".join(sorted(APPS))
         raise SystemExit(f"unknown or unimplemented app {app!r}; available: {available}")
     mcp = FastMCP(f"google-{app}", instructions=getattr(module, "INSTRUCTIONS", None))
     module.register(mcp)
